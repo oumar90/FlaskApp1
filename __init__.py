@@ -1,11 +1,12 @@
-from flask import Flask, render_template, flash, url_for, redirect, request, g
+from flask import Flask, render_template, flash, url_for, redirect, request, g, session
 
 from content_managment import Content
-from wtforms import Form
-from passlib.hash import sha256_cypt
+from wtforms import Form, BooleanField, TextField, PasswordField, validators
+from passlib.hash import sha256_crypt
 from MySQLdb import escape_string as thwart
 
 from dbconnect import connection
+import gc
 
 TOPIC_DICT = Content()
 
@@ -72,7 +73,7 @@ def register_page():
         if request.method == "POST" and form.validate():
         	username = form.username.data
         	email    = form.email.data
-        	password = sha256_cypt.encrypt(str(form.password.data))
+        	password = sha256_crypt.encrypt(str(form.password.data))
         	c , conn = connection()
 
         	x = c.execute("SELECT * FROM users WHERE username = (%s)",
@@ -84,11 +85,22 @@ def register_page():
         		return render_template('register.html', form=form)
 
         	else:
-        		c.execute("INSERT INT users (username, password, email, tracking) VALUES (%s, %s, %s, %s)",
+        		c.execute("INSERT INTO users (username, password, email, tracking) VALUES (%s, %s, %s, %s)",
         					(thwart(username), thwart(password), thwart(email), thwart("/introdution-to-python-programming/")))	
 
+        		conn.commit()
+        		flash("Thanks for registering !")
+        		c.close()
+        		conn.close()
+        		gc.collect()
 
 
+        		session['logged_in'] = True
+        		session["username"] = username
+
+        		return redirect(url_for('dashbord'))
+
+        return render_template('register.html')	
 
     except Exception as e:
         return(str(e))
